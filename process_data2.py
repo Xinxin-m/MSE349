@@ -314,7 +314,7 @@ def process_files_parallel(filepaths: List[str], output_folder: str = None, max_
 
 if __name__ == "__main__":
     
-    with open('USD_60_filenames.txt', 'r') as f:
+    with open('USD_60_filenames_parquet.txt', 'r') as f:
         filepaths = f.read().splitlines()
     
     # df = process_single_file(filepaths[0], output_folder="USD_60_indicators")
