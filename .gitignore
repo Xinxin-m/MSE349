@@ -1,0 +1,18 @@
+.env
+
+get_data.ipynb
+
+# Ignore files starting with mcap
+mcap*
+
+# Ignore specific marketcap file
+marketcap_data.csv
+
+# Ignore files and folders starting with Kraken_OHLCVT
+Kraken_OHLCVT*/
+
+# Ignore folders starting with USD_60 but not files
+USD_60*/
+
+# Ignore specific covariance file
+USD_60_2022_01_01-2025_03_31_covariance_logreturn.npy 
