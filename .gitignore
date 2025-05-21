@@ -19,3 +19,5 @@ USD_60*/
 # Ignore specific covariance file
 USD_60_2022_01_01-2025_03_31_covariance_logreturn.npy 
 
+*.parquet
+*.csv
