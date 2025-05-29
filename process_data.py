@@ -7,7 +7,7 @@ import os
 def add_colnames(input_data, column_names=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'trades']):
     """
     Add column names to a DataFrame without a header, from a CSV file or an existing DataFrame.
-    input_data: String (CSV file path) or pandas DataFrame.
+    input_data: String (CSV path) or pandas DataFrame.
     """
     # Check if input_data is a string (CSV path)
     if isinstance(input_data, str):
@@ -75,7 +75,7 @@ def log_price_range(high: pd.Series, low: pd.Series) -> pd.Series:
 def amihud_illiquidity(log_return: pd.Series, volume: pd.Series) -> pd.Series:
     return np.abs(log_return) / volume
 
-def process_df(csv_path: str, folder: str = None) -> pd.DataFrame:
+def process_df(csv_path: str, folder: str = None, timestep: int = 3600) -> pd.DataFrame:
     """
     Process a CSV file by:
     1. Adding column names
@@ -86,14 +86,13 @@ def process_df(csv_path: str, folder: str = None) -> pd.DataFrame:
     Args:
         csv_path: Path to input CSV file
         folder: Optional folder to save output parquet file. If None, saves in same location as input.
+        timestep: Time step in seconds for calculating returns (default: 3600 for hourly data)
     """
     # Read and add column names
     df = add_colnames(csv_path)
-    
-    # Add returns and volume changes
-    df = add_return_logreturn_volume(df)
-    
-    # Add technical indicators
+
+    df = add_return_logreturn_volume(df, timestep=timestep)
+
     df['close_to_high'] = close_to_high_ratio(df['close'], df['high'])
     df['close_to_low'] = close_to_low_ratio(df['close'], df['low'])
     df['log_price_range'] = log_price_range(df['high'], df['low'])
@@ -107,7 +106,7 @@ def process_df(csv_path: str, folder: str = None) -> pd.DataFrame:
     
     return df
 
-def process_all_files(filepaths: list, folder: str = None, n_workers: int = None):
+def process_all_files(filepaths: list, folder: str = None, n_workers: int = None, timestep: int = 3600):
     """
     Process all CSV files in parallel
     
@@ -115,6 +114,7 @@ def process_all_files(filepaths: list, folder: str = None, n_workers: int = None
         filepaths: List of CSV file paths
         folder: Optional output folder for parquet files
         n_workers: Number of parallel workers. If None, uses CPU count
+        timestep: Time step in seconds for calculating returns (default: 3600 for hourly data)
     """
     if n_workers is None:
         n_workers = os.cpu_count()
@@ -125,14 +125,38 @@ def process_all_files(filepaths: list, folder: str = None, n_workers: int = None
     
     # Process files in parallel
     with Pool(n_workers) as pool:
-        pool.starmap(process_df, [(fp, folder) for fp in filepaths])
+        pool.starmap(process_df, [(fp, folder, timestep) for fp in filepaths])
+
+
+def process_summary_csv(number: int):
+    """
+    Process summary files based on the number parameter (e.g. 720, 60, etc.), output in a folder 'USD_{number}'
+    Args:
+        number: The number to filter files by (e.g. 720 for hourly data)
+    """
+    # Calculate timestep in seconds
+    timestep = number * 60
+    summary_file = f"Kraken_OHLCVT_summary/csv_file_summary.csv_{number}.csv"
+    df = pd.read_csv(summary_file)
+    filenames = df[df['file_name'].str.contains('USD_')]['file_name'].tolist()
+    filepaths = [f"Kraken_OHLCVT/{filename}" for filename in filenames]
+    
+    process_all_files(filepaths, folder=f"USD_{number}", timestep=timestep)
 
 
 if __name__ == "__main__":
-    # Read filepaths from the text file
-    with open("USD_60_2022_01_01-2025_03_31_filenames.txt", "r") as file:
-        filepaths = [line.strip() for line in file if line.strip()]
+    # Example usage of new function
+    #process_summary_csv(720) 
+
+    import random
+    # Get list of all parquet files in USD_720 folder
+    parquet_files = [f for f in os.listdir('USD_720') if f.endswith('.parquet')]
     
-    # process_df(filepaths[0], folder="processed_data")
-    # Process all files in parallel
-    process_all_files(filepaths, folder="USD_60") 
+    # Randomly select 3 files and print their first 10 rows
+    for _ in range(1):
+        random_file = random.choice(parquet_files)
+        filepath = os.path.join('USD_720', random_file)
+        df = pd.read_parquet(filepath)
+        print(f"\nLast 10 rows of {random_file}:")
+        print(df.tail())
+        print("-" * 80)

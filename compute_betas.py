@@ -7,8 +7,7 @@ import os
 def compute_beta(asset_returns, market_returns, window=240, min_periods=100):
     """
     Compute market beta using rolling window calculations on aligned return series.
-    More efficient than add_market_beta as it assumes uniform timesteps within each series.
-    Ensure returns are pd.Series that have timestamp as indices (set_index('timestamp'))
+    Ensure inputs asset_returns and market_returns are pd.Series of log returns that have timestamp as indices (set_index('timestamp')) 
     """
     # Align the series to asset_returns' index
     market_returns = market_returns.reindex(asset_returns.index)
@@ -22,7 +21,7 @@ def compute_beta(asset_returns, market_returns, window=240, min_periods=100):
     
     return beta
 
-def process_df(file_path, df_market, df_btc, df_eth, window=720, min_periods=240, output_folder=None):
+def process_df(file_path, df_market, df_btc=None, df_eth=None, window=720, min_periods=240, output_folder=None):
     """
     Process a single parquet file to compute and add beta columns.
     
@@ -44,14 +43,14 @@ def process_df(file_path, df_market, df_btc, df_eth, window=720, min_periods=240
     
     # Compute betas
     market_beta = compute_beta(df_asset['log_return'], df_market['log_return'], window, min_periods)
-    btc_beta = compute_beta(df_asset['log_return'], df_btc['log_return'], window, min_periods)
-    eth_beta = compute_beta(df_asset['log_return'], df_eth['log_return'], window, min_periods)
+    #btc_beta = compute_beta(df_asset['log_return'], df_btc['log_return'], window, min_periods)
+    #eth_beta = compute_beta(df_asset['log_return'], df_eth['log_return'], window, min_periods)
     
     # Add beta columns to the dataframe
     df_asset[['beta_market', 'beta_btc', 'beta_eth']] = pd.DataFrame({
         'beta_market': market_beta,
-        'beta_btc': btc_beta,
-        'beta_eth': eth_beta
+        #'beta_btc': btc_beta,
+        #'beta_eth': eth_beta
     })
     
     # Determine output path
@@ -68,7 +67,7 @@ def process_df(file_path, df_market, df_btc, df_eth, window=720, min_periods=240
     # Save the processed file
     df_asset.to_parquet(output_path)
 
-def process_dfs(file_list, window=720, min_periods=240, max_workers=None, output_folder=None):
+def process_dfs(file_list, window=60, min_periods=30, max_workers=None, output_folder=None):
     """
     Process multiple parquet files in parallel to compute and add beta columns.
     
@@ -82,8 +81,8 @@ def process_dfs(file_list, window=720, min_periods=240, max_workers=None, output
     # Load market data once
     print("Loading market data...")
     df_market = pd.read_csv('mcap_processed.csv')
-    df_btc = pd.read_parquet('USD_60/XBTUSD_60.parquet')
-    df_eth = pd.read_parquet('USD_60/ETHUSD_60.parquet')
+    df_btc = pd.read_parquet('USD_60_indicators/XBTUSD_60.parquet')
+    df_eth = pd.read_parquet('USD_60_indicators/ETHUSD_60.parquet')
     
     # Set timestamp as index for all dataframes
     df_market.set_index('timestamp', inplace=True)
@@ -109,8 +108,9 @@ def process_dfs(file_list, window=720, min_periods=240, max_workers=None, output
 
 if __name__ == "__main__":
     # Example usage
-    with open('USD_60_filenames_parquet.txt', 'r') as f:
+    with open('filenames_parquet.txt', 'r') as f:
         filepaths = f.read().splitlines()
-    
+
+    filepaths = ['USD_60_indicators/' + f for f in filepaths]
     # Process files and save to a new folder
     process_dfs(filepaths, output_folder='USD_60_betas') 
