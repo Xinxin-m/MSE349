@@ -20,4 +20,7 @@ USD_60*/
 USD_60_2022_01_01-2025_03_31_covariance_logreturn.npy 
 
 *.parquet
-*.csv
+
+__pycache__/
+
+*.pkl
